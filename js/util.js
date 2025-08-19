@@ -10,7 +10,12 @@ export function showNotif(msg, ok=true){
   notifEl.style.display = 'block';
   setTimeout(()=>{ notifEl.style.display='none'; }, 2500);
 }
-export function block(on=true){ spl.style.display = on?'flex':'none'; }
+let __blockCount = 0;
+export function block(on = true) {
+  __blockCount += on ? 1 : -1;
+  if (__blockCount < 0) __blockCount = 0;
+  spl.style.display = __blockCount > 0 ? 'flex' : 'none';
+}
 
 export function hideAllPages(){ $$('.page').forEach(p=>p.style.display='none'); }
 export function go(pageId){

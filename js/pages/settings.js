@@ -125,15 +125,21 @@ export function initSettings(){
 }
 
 export async function onPageShown(pid){
-  if(pid==='page-kelola-mess'){ await renderMessList(); await initCommonData(); }
-  if(pid==='page-kelola-kamar'){ await renderKamarList(); }
-  if(pid==='page-kelola-user'){ await renderUserList(); }
-  if(pid==='page-config'){if(state.user?.role === 'admin'){
+  if (pid === 'page-kelola-mess') {
+    const rows = await renderMessList();     // kembalikan rows dari render
+    // update cache & select berdasarkan hasil yang SAMA (tanpa hit lagi)
+    state.cacheMess = rows || [];
+    fillMessSelects();
+  }
+  if (pid === 'page-kelola-kamar') { await renderKamarList(); }
+  if (pid === 'page-kelola-user')  { await renderUserList(); }
+  if (pid === 'page-config') {
+    if (state.user?.role === 'admin') {
       try{
         const r = await api('config.get', {});
         const cfg = r?.config || {};
-        if($('#cfg-bot'))   $('#cfg-bot').value   = cfg.telegram_bot_token || '';
-        if($('#cfg-admin')) $('#cfg-admin').value = cfg.telegram_admin_id  || '';
+        if ($('#cfg-bot'))   $('#cfg-bot').value   = cfg.telegram_bot_token || '';
+        if ($('#cfg-admin')) $('#cfg-admin').value = cfg.telegram_admin_id  || '';
       }catch{}
     }
   }
@@ -143,20 +149,59 @@ export async function onPageShown(pid){
 /* KELOLA MESS */
 async function renderMessList(){
   const r = await api('mess.list', {});
-  const rows = (r.rows||[]).map((m,i)=>`
-    <tr><td>${i+1}</td><td>${m.name}</td><td>${m.location||''}</td><td>${m.notes||''}</td>
-    <td><span class="badge ${m.is_active?'text-bg-success':'text-bg-secondary'}">${m.is_active?'Aktif':'Nonaktif'}</span></td>
-    <td class="text-end"><button class="btn btn-sm btn-outline-danger del" data-id="${m.id}"><i class="bi bi-trash"></i></button></td></tr>`).join('');
-  $('#km-list').innerHTML = `<table class="table table-sm"><thead><tr><th>No.</th><th>Nama</th><th>Lokasi</th><th>Catatan</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
-  $('#km-list').querySelectorAll('.del').forEach(b=>b.addEventListener('click', async ()=>{
+  const rows = (r.rows || []);
+  const htmlRows = rows.map((m,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${m.name}</td>
+      <td>${m.location||''}</td>
+      <td>${m.notes||''}</td>
+      <td><span class="badge ${m.is_active?'text-bg-success':'text-bg-secondary'}">
+        ${m.is_active?'Aktif':'Nonaktif'}</span>
+      </td>
+      <td class="text-end">
+        <button class="btn btn-sm btn-outline-danger del" data-id="${m.id}">
+          <i class="bi bi-trash"></i>
+        </button>
+      </td>
+    </tr>`).join('');
+
+  $('#km-list').innerHTML = `
+    <table class="table table-sm">
+      <thead><tr>
+        <th>No.</th><th>Nama</th><th>Lokasi</th><th>Catatan</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>${htmlRows}</tbody>
+    </table>`;
+
+  // Handler hapus → render ulang SEKALI lalu sinkronkan select Mess TANPA initCommonData()
+  $('#km-list').querySelectorAll('.del').forEach(b => b.addEventListener('click', async ()=>{
     if(!confirm('Hapus mess ini?')) return;
-    const ok = await api('mess.del', {id:b.getAttribute('data-id')}); if(ok.ok){ showNotif('Mess dihapus'); renderMessList(); initCommonData(); }
+    const ok = await api('mess.del', { id: b.getAttribute('data-id') });
+    if (ok?.ok) {
+      showNotif('Mess dihapus');
+      const updated = await renderMessList();
+      state.cacheMess = updated || [];
+      fillMessSelects();
+    }
   }));
+
+  // KEMBALIKAN data ke pemanggil agar bisa dipakai lagi (hindari hit dobel)
+  return rows;
 }
 async function addMess(){
-  const name=$('#km-name').value.trim(); if(!name){ showNotif('Nama mess wajib', false); return; }
-  const location=$('#km-loc').value.trim(); const notes=$('#km-notes').value.trim();
-  const ok=await api('mess.add', {name, location, notes}); if(ok.ok){ showNotif('Mess ditambah'); $('#km-name').value=''; $('#km-loc').value=''; $('#km-notes').value=''; renderMessList(); initCommonData(); }
+  const name = $('#km-name').value.trim(); if(!name){ showNotif('Nama mess wajib', false); return; }
+  const location = $('#km-loc').value.trim();
+  const notes = $('#km-notes').value.trim();
+
+  const ok = await api('mess.add', { name, location, notes });
+  if (ok?.ok) {
+    showNotif('Mess ditambahkan');
+    $('#km-name').value = ''; $('#km-loc').value = ''; $('#km-notes').value = '';
+    const rows = await renderMessList();
+    state.cacheMess = rows || [];
+    fillMessSelects();
+  }
 }
 
 /* KELOLA KAMAR */

@@ -271,17 +271,26 @@ async function populateRoomsSelect(selectEl, messName, preselect=''){
 
   if(preselect){ selectEl.classList.remove('is-invalid'); }
 }
+async function getRoomsForMess(messName) {
+  const key = norm(messName).toLowerCase();
+  if (!key) return [];
+  if (roomsCache.has(key)) return roomsCache.get(key);
+
+  const r = await api('rooms.list', { mess_name: key });
+  const rooms = r.ok ? (r.rows || []) : [];
+  roomsCache.set(key, rooms);
+  return rooms;
+}
 
 async function fillRoomsOnce(selectEl, messName, preselect){
-  const r = await api('rooms.list', { mess_name: messName });
-  const rooms = r.ok ? (r.rows||[]) : [];
-  // tampilkan semua kamar; yang tidak "tersedia" kita disable
+  const rooms = await getRoomsForMess(messName);
   const options = rooms.map(room=>{
     const st = (room.status||'').toString().trim().toLowerCase();
     const isAvail = (st==='tersedia' || st==='available' || st==='ready' || st==='kosong');
     const label = `${room.room_name} (kap ${room.capacity}${room.grade?`, ${room.grade}`:''})${isAvail?'':' [penuh]'}`;
     return `<option value="${room.room_name}" ${isAvail?'':'disabled'} ${preselect===room.room_name?'selected':''}>${label}</option>`;
   }).join('');
+
   if(options){
     selectEl.insertAdjacentHTML('beforeend', options);
     return true;

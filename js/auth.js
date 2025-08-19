@@ -12,7 +12,7 @@ export function wireAuth(updateRoleUI, onReady){
     if(res.ok){
       setLogin(res.token, res.user);
       showNotif('Login sukses');
-      await initCommonData();
+      await ensureCommonData();
       updateRoleUI();
       onReady?.();
     }else{
@@ -30,7 +30,7 @@ export function wireAuth(updateRoleUI, onReady){
     if(state.token && state.user){
       try{
         const me = await api('me',{});
-        if(me.ok){ setLogin(state.token, state.user); await initCommonData(); updateRoleUI(); onReady?.(); }
+        if(me.ok){ setLogin(state.token, state.user); await ensureCommonData(); updateRoleUI(); onReady?.(); }
         else { go('page-login'); }
       }catch{ go('page-login'); }
     }else{
@@ -70,4 +70,16 @@ export function applyRoleUI(){
   }
 }
 
+let __commonInited = false;
+async function ensureCommonData(){
+  if (__commonInited) return;
+  __commonInited = true;
+
+  // Muat seluruh master/config ringan yang sebelumnya dilakukan initCommonData()
+  await initCommonData();
+
+  // Tandai & beri sinyal ke app.js (onReady) bahwa data siap
+  state.commonReady = true;
+  document.dispatchEvent(new CustomEvent('commonDataReady'));
+}
 
