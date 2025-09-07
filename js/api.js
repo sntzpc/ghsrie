@@ -8,7 +8,7 @@ export const state = {
 };
 
 // === Hardcode GAS Web App URL di sini ===
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyX9kiRFG6fjslzVY30pKTo_JHpDYX6m7pDyYf6EW9fCUaDo1fADxQBQRujLJHDsrcV8w/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbx0SDct8s9WH4esBiJZq0pi_1yR7OvXw5yKsJkqErkYVDTzmsa3g2TaPW359S0joAVL1Q/exec';
 
 // sinkronkan ke state untuk dipakai bagian lain bila perlu
 state.config.gas_url = GAS_URL;
